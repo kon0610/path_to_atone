@@ -1,0 +1,95 @@
+# The behavior of RuboCop can be controlled via the .rubocop.yml
+# configuration file. It makes it possible to enable/disable
+# certain cops (checks) and to alter their behavior if they accept
+# any parameters. The file can be placed either in your home
+# directory or in some project directory.
+#
+# RuboCop will start looking for the configuration file in the directory
+# where the inspected file is and continue its way up to the root directory.
+#
+# See https://docs.rubocop.org/rubocop/configuration
+
+require:
+  - rubocop-performance
+  - rubocop-rails
+  - rubocop-rspec
+
+AllCops:
+  TargetRubyVersion: 2.5
+  TargetRailsVersion: 5.2.8
+  DisplayCopNames: true
+  DisplayStyleGuide: true
+  StyleGuideBaseURL: https://github.com/fortissimo1997/ruby-style-guide/blob/japanese/README.ja.md
+  Exclude:
+    - 'db/schema.rb'
+    - 'config/**/*'
+    - 'bin/**/*'
+    - 'vendor/**/*'
+    - 'log/**/*'
+    - '.git/**/*'
+  NewCops: enable
+
+Metrics/AbcSize:
+  Max: 30
+
+Metrics/MethodLength:
+  Max: 30
+
+Metrics/ClassLength:
+  Enabled: false
+
+Metrics/BlockLength:
+  Enabled: false
+
+Style/RescueModifier:
+  Enabled: false
+
+Style/Documentation:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+Style/AsciiComments:
+  Enabled: false
+
+Layout/HashAlignment:
+ EnforcedHashRocketStyle: separator
+ EnforcedColonStyle: separator
+ EnforcedLastArgumentHashStyle: always_ignore
+
+# 他のオプション: special_inside_parentheses, align_braces
+# https://www.rubydoc.info/gems/rubocop/RuboCop/Cop/Layout/FirstHashElementIndentation
+Layout/FirstHashElementIndentation:
+  EnforcedStyle: consistent
+
+# if a = b.save を可能にする
+# https://docs.rubocop.org/rubocop/cops_lint.html#lintassignmentincondition
+Lint/AssignmentInCondition:
+  Enabled: true
+
+Bundler/OrderedGems:
+  Enabled: true
+
+# Rails4では不要
+Rails/ApplicationController:
+  Enabled: false
+
+RSpec/MultipleExpectations:
+  Enabled: false
+
+# context名の制約
+RSpec/ContextWording:
+  Enabled: false
+
+RSpec/NestedGroups:
+  Max: 6
+
+RSpec/BeforeAfterAll:
+  Enabled: false
+
+RSpec/InstanceVariable:
+  Enabled: true
+
+RSpec/ExampleLength:
+  Enabled: false
