@@ -1,2 +1,10 @@
-<h1>Payments#new</h1>
-<p>Find me in app/views/payments/new.html.erb</p>
+<h1>入金</h1>
+<%= form_with model: @payment, local: true do |form| %>
+  <div>
+    <%= form.label :amount, '入金金額' %>
+    <%= form.number_field :amount %>
+  </div>
+  <div>
+    <%= form.submit '入金する' %>
+  </div>
+<% end %>
