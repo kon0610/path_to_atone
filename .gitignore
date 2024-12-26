@@ -25,3 +25,9 @@
 
 # Ignore master key for decrypting credentials and more.
 /config/master.key
+
+# VSCode設定を無視
+.vscode/
+
+# Solargraph設定を無視
+.solargraph.yml
