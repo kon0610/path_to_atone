@@ -10,10 +10,17 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2024_12_26_022709) do
+ActiveRecord::Schema.define(version: 2025_01_13_102639) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "batch_logs", force: :cascade do |t|
+    t.string "batch_name", null: false
+    t.date "batch_executed_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
 
   create_table "consumer_billings", force: :cascade do |t|
     t.bigint "consumer_id", null: false
@@ -97,7 +104,7 @@ ActiveRecord::Schema.define(version: 2024_12_26_022709) do
   create_table "receipts", force: :cascade do |t|
     t.bigint "consumer_billing_id", null: false
     t.integer "payment_amount", null: false
-    t.integer "balance"
+    t.integer "payment_balance"
     t.date "payment_date", null: false
     t.datetime "offset_completed_datetime"
     t.datetime "created_at", null: false
