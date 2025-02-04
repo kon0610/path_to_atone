@@ -16,9 +16,6 @@ module Cron
                     "consumer_debts.netting_datetime IS NULL OR consumer_debts.netting_datetime > ?",
                     last_batch_executed_at|| Time.at(0)
                   )
-        # receiptsの内容を確認する
-        puts "Receipts count: #{receipts.count}"
-        puts "Receipts: #{receipts.inspect}"
 
         if receipts.empty?
           puts '消し込み対象の入金データはありませんでした。'
@@ -36,16 +33,12 @@ module Cron
             next
           end
 
-          puts "入金ID #{receipt.id} に紐づく請求を1件取得しました。"
-
           # 入金に紐づく債務を取得
           consumer_debt = ConsumerDebt.find_by(receipt_id: receipt.id)
           if consumer_debt.nil?
             puts "入金ID #{receipt.id} に紐づく債務が見つかりませんでした。"
             next
           end
-
-          puts "入金ID #{receipt.id} に紐づく債務を1件取得しました。"
 
           # 債務の取引日を出力
           payment_date = receipt.payment_date
@@ -65,33 +58,17 @@ module Cron
             next
           end
 
-          puts "請求ID #{consumer_billing.id} に紐づく債権を#{consumer_credits.count}件取得しました。"
-
           # 債権と債務を相殺
           consumer_credits.each do |credit|
-            remaining_credit = credit.latest_consumer_credit || credit.initial_consumer_credit
-            puts "処理中の債権ID #{credit.id}: 残額 #{remaining_credit}"
+            break if credit.initial_consumer_credit == 0
 
-            # 相殺金額を決定
-            while remaining_credit > 0 && remaining_debt > 0
-              netting_amount = [remaining_credit, remaining_debt].min
-              break if netting_amount <= 0
-
-              puts "相殺金額: #{netting_amount}"
-
-              # 相殺イベント登録
-              ConsumerOffsetEvent.create!(
-                consumer_debt_id: consumer_debt.id,
-                consumer_credit_id: credit.id,
-                offset_datetime: Time.current,
-                offset_amount: netting_amount
-              )
-
-              puts '相殺結果を consumer_offset_events に登録しました。'
-
-              remaining_debt -= netting_amount
-              remaining_credit -= netting_amount
-            end
+            # 相殺イベント登録
+            ConsumerOffsetEvent.create!(
+              consumer_debt_id: consumer_debt.id,
+              consumer_credit_id: credit.id,
+              offset_datetime: Time.current,
+              offset_amount: credit.initial_consumer_credit,
+            )
           end
 
           # 債権の更新
@@ -105,6 +82,10 @@ module Cron
 
           # 入金データの更新
           update_receipt_balance(receipt)
+
+          # バッチ履歴の更新
+          log_execution('NettingBatch')
+
         end
         puts "消し込み完了しました"
       rescue StandardError => e
@@ -117,8 +98,7 @@ module Cron
 
     def self.update_consumer_credits(consumer_credits)
       consumer_credits.each do |credit|
-        offset_event = ConsumerOffsetEvent.find_by(consumer_credit_id: credit.id)
-        next unless offset_event
+        offset_event = ConsumerOffsetEvent.find_by!(consumer_credit_id: credit.id)
 
         offset_amount = offset_event.offset_amount
         updated_credit = credit.initial_consumer_credit - offset_amount
@@ -127,14 +107,11 @@ module Cron
           latest_consumer_credit: updated_credit,
           netting_datetime: offset_event.offset_datetime
         )
-
-        puts "債権ID #{credit.id} を更新しました: 最新残高 #{updated_credit}, 相殺日時 #{offset_event.offset_datetime}"
       end
     end
 
     def self.update_consumer_debt(consumer_debt)
       offset_events = ConsumerOffsetEvent.where(consumer_debt_id: consumer_debt.id)
-      return puts "債務ID #{consumer_debt.id} に関連する相殺イベントが見つかりませんでした。" unless offset_events.exists?
 
       total_offset_amount = offset_events.sum(:offset_amount)
       updated_debt = consumer_debt.initial_consumer_debt - total_offset_amount
@@ -144,31 +121,31 @@ module Cron
         latest_consumer_debt: updated_debt,
         netting_datetime: latest_offset_datetime
       )
-
-      puts "債務ID #{consumer_debt.id} を更新しました: 最新残高 #{updated_debt}, 最終相殺日時 #{latest_offset_datetime}"
     end
 
     def self.update_consumer_billing(consumer_billing)
       total_credit_balance = consumer_billing.consumer_credits.sum(:latest_consumer_credit)
       consumer_billing.update!(billing_balance: total_credit_balance)
 
-      puts "請求ID #{consumer_billing.id} の billing_balance を #{total_credit_balance} に更新しました。"
-
       if total_credit_balance.zero?
         consumer_billing.update!(payment_status: 1)
-        puts "請求ID #{consumer_billing.id} の payment_status を '1 (支払い済み)' に更新しました。"
       end
     end
 
     def self.update_receipt_balance(receipt)
-      consumer_debt = ConsumerDebt.find_by(receipt_id: receipt.id)
-      return unless consumer_debt
+      consumer_debt = ConsumerDebt.find_by!(receipt_id: receipt.id)
 
       remaining_debt_balance = consumer_debt.latest_consumer_debt || consumer_debt.initial_consumer_debt
       receipt.update!(payment_balance: remaining_debt_balance)
-
-      puts "入金ID #{receipt.id} の payment_balance を #{remaining_debt_balance} に更新しました。"
     end
+
+    def self.log_execution(batch_name)
+      BatchLog.create!(
+      batch_name: batch_name,
+      batch_executed_at: Time.current
+    )
+    end
+
   end
 end
 
