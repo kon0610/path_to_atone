@@ -13,8 +13,7 @@ module Cron
         .joins(consumer_billing: { consumer_credits: :consumer_transaction })
         .joins(:consumer_debt)
         .where(consumer_billings: { payment_status: 0 })
-        .where.not(payment_amount: nil)
-        .where("consumer_debts.netting_datetime IS NULL OR consumer_debts.netting_datetime > ?", last_batch_executed_at || Time.at(0))
+        .where(consumer_debts: { netting_datetime: nil })
         .select(
           "receipts.id AS receipt_id",
           "receipts.payment_amount AS payment_amount",
@@ -38,7 +37,6 @@ module Cron
         puts "========================="
         puts "データ抽出結果"
 
-        #　ここのデータを使って相殺処理する
         receipt_ids = receipts_with_data.map(&:receipt_id).uniq
         billing_ids = receipts_with_data.map(&:consumer_billing_id).uniq
         credit_ids = receipts_with_data.map(&:consumer_credit_id).uniq
@@ -53,6 +51,7 @@ module Cron
         # **債権と債務の相殺処理**
         ActiveRecord::Base.transaction do
           receipts_with_data.each do |data|
+            # 最初に取得したデータを直接利用
             consumer_credit = ConsumerCredit.find(data.consumer_credit_id)
             consumer_debt = ConsumerDebt.find(data.consumer_debt_id)
             consumer_billing = ConsumerBilling.find(data.consumer_billing_id)
@@ -63,7 +62,7 @@ module Cron
               consumer_debt_id: consumer_debt.id,
               consumer_credit_id: consumer_credit.id,
               offset_datetime: Time.current,
-              offset_amount: consumer_credit.initial_consumer_credit
+              offset_amount: consumer_credit.initial_consumer_credit,
             )
 
             puts "✅  相殺処理を実行: 債権ID #{consumer_credit.id}, 債務ID #{consumer_debt.id}, 相殺金額 #{consumer_credit.initial_consumer_credit}"
