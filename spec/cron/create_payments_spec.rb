@@ -16,7 +16,7 @@ RSpec.describe Cron::NettingBatch, type: :module do
         age: 25,
         phone_number: "09098765432",
         member_registration_datetime: rand(1.year.ago..Time.current),
-        member_code: 12345,
+        member_code: 12345
         )
       @consumer_billing = ConsumerBilling.create!(
         consumer_id: @consumer.id,
@@ -25,19 +25,19 @@ RSpec.describe Cron::NettingBatch, type: :module do
         payment_method: 0,
         billing_code: "55dbb150118e578d",
         payment_status: 0,
-        payment_due_date: Date.new(2025, 1, 24),
+        payment_due_date: Date.new(2025, 1, 24)
         )
       @consumer_transaction1 = ConsumerTransaction.create!(
       consumer_id: @consumer.id,
       consumer_billing_id: @consumer_billing.id,
       amount: 300,
-      registration_datetime: rand(1.month.ago..Time.current),
+      registration_datetime: rand(1.month.ago..Time.current)
       )
       @consumer_transaction2 = ConsumerTransaction.create!(
         consumer_id: @consumer.id,
         consumer_billing_id: @consumer_billing.id,
         amount: 700,
-        registration_datetime: rand(1.month.ago..Time.current),
+        registration_datetime: rand(1.month.ago..Time.current)
       )
 
       @consumer_credit1 =ConsumerCredit.create!(
@@ -46,7 +46,7 @@ RSpec.describe Cron::NettingBatch, type: :module do
         consumer_billing_id: @consumer_billing.id,
         initial_consumer_credit: @consumer_transaction1.amount,
         latest_consumer_credit: nil,
-        netting_datetime: nil,
+        netting_datetime: nil
       )
       @consumer_credit2 =ConsumerCredit.create!(
         consumer_id: @consumer.id,
@@ -54,7 +54,7 @@ RSpec.describe Cron::NettingBatch, type: :module do
         consumer_billing_id: @consumer_billing.id,
         initial_consumer_credit: @consumer_transaction2.amount,
         latest_consumer_credit: nil,
-        netting_datetime: nil,
+        netting_datetime: nil
       )
 
       @receipt = Receipt.create!(
@@ -62,7 +62,7 @@ RSpec.describe Cron::NettingBatch, type: :module do
         payment_amount: 1000,
         payment_balance: nil,
         payment_date: Date.new(2024, 12, 25),
-        offset_completed_datetime: nil,
+        offset_completed_datetime: nil
       )
       # puts "Receipt count: #{Receipt.count}"
 
@@ -70,7 +70,7 @@ RSpec.describe Cron::NettingBatch, type: :module do
         consumer_id: @consumer.id,
         receipt_id: @receipt.id,
         initial_consumer_debt: 1000,
-        netting_datetime: nil,
+        netting_datetime: nil
       )
     end
     context "正常系：1000円の取引で全ての残高が0になる" do
@@ -118,22 +118,22 @@ RSpec.describe Cron::NettingBatch, type: :module do
       it "支払ステータスが 0 ではないデータではエラー" do
         @consumer_billing.update!(payment_status: 1) # 条件に合わないように更新
         @consumer_billing.reload
-        puts @consumer_billing.inspect
-        expect { Cron::NettingBatch.run }.to output(/⚠️  該当する入金データがありません。処理を中断します。/).to_stdout.and raise_error(SystemExit)
+        expect { Cron::NettingBatch.run }.to raise_error(SystemExit)
+        expect { Cron::NettingBatch.run }.to output(/⚠️  該当する入金データがありません。処理を中断します。/).to_stdout
       end
 
       it "前回のbacth以前のデータが対象の時はエラー" do
         @consumer_debt.update!(netting_datetime: @latest_batch_time) # 直近バッチよりも前に設定
         @consumer_debt.reload
-        puts "消し込み時間 #{@consumer_debt.reload.netting_datetime}"
-        expect { Cron::NettingBatch.run }.to output(/⚠️  該当する入金データがありません。処理を中断します。/).to_stdout.and raise_error(SystemExit)
+        expect { Cron::NettingBatch.run }.to raise_error(SystemExit)
+        expect { Cron::NettingBatch.run }.to output(/⚠️  該当する入金データがありません。処理を中断します。/).to_stdout
       end
 
       it "該当入金データがない場合、エラー" do
         # 全てのデータを削除して抽出対象がない状態を作る
         @receipt.destroy!
-        @receipt.reload
-        expect { Cron::NettingBatch.run }.to output(/⚠️  該当する入金データがありません。処理を中断します。/).to_stdout.and raise_error(SystemExit)
+        expect { Cron::NettingBatch.run }.to raise_error(SystemExit)
+        expect { Cron::NettingBatch.run }.to output(/⚠️  該当する入金データがありません。処理を中断します。/).to_stdout
       end
     end
   end
