@@ -101,14 +101,14 @@ RSpec.describe Cron::NettingBatch, type: :module do
         @consumer_billing.update!(payment_status: 1) # 条件に合わないように更新
         expect {
           Cron::NettingBatch.run
-        }.to raise_error(SystemExit).and output(/⚠️  該当する入金データがありません。処理を中断します。/).to_stdout
+        }.to raise_error(SystemExit).and output(/該当する入金データがありません。処理を中断します。/).to_stdout
       end
 
       it "前回のbacth以前のデータが対象の時はエラー" do
         @consumer_debt.update!(netting_datetime: @latest_batch_time) # 直近バッチよりも前に設定
         expect {
           Cron::NettingBatch.run
-        }.to raise_error(SystemExit).and output(/⚠️  該当する入金データがありません。処理を中断します。/).to_stdout
+        }.to raise_error(SystemExit).and output(/該当する入金データがありません。処理を中断します。/).to_stdout
       end
 
       it "該当入金データがない場合、エラー" do
@@ -116,7 +116,7 @@ RSpec.describe Cron::NettingBatch, type: :module do
         @receipt.destroy!
         expect {
           Cron::NettingBatch.run
-        }.to raise_error(SystemExit).and output(/⚠️  該当する入金データがありません。処理を中断します。/).to_stdout
+        }.to raise_error(SystemExit).and output(/該当する入金データがありません。処理を中断します。/).to_stdout
       end
     end
   end
