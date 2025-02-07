@@ -1,0 +1,2 @@
+class BatchLog < ApplicationRecord
+end
